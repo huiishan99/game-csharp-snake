@@ -11,10 +11,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up MSBuild
-        uses: microsoft/setup-msbuild@v2
+        uses: microsoft/setup-msbuild@30375c66a4eea26614e0d39710365f22f8b0af57 # v3
 
       - name: Set build metadata
         id: metadata
@@ -54,7 +54,7 @@ jobs:
           Compress-Archive -Path artifacts\SnakeGame\* -DestinationPath artifacts\$env:PACKAGE_NAME.zip -Force
 
       - name: Upload app artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: ${{ steps.metadata.outputs.package_name }}
           path: artifacts/${{ steps.metadata.outputs.package_name }}.zip
