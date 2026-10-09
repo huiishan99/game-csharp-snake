@@ -136,6 +136,7 @@ namespace SnakeGame
             LoadHighScore();
             LoadLeaderboard();
             LoadPlayerSettings();
+            ApplySelectedBoardSize();
             ApplyVisualTheme(selectedThemePreset);
             UpdateSettingsFromUI();
             UpdateHud();
@@ -1759,3 +1760,4 @@ namespace SnakeGame
         }
     }
 }
+

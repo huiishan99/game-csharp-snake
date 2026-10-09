@@ -1,0 +1,37 @@
+PASS: Standalone executable reaches Windows message loop
+PASS: Standalone window geometry is available
+PASS: Standalone first launch shows full Standard board
+PASS: Standalone executable closes cleanly
+PASS: Real WinForms app opens start menu
+PASS: Startup applies saved board dimensions
+PASS: Startup menu fits inside client area
+PASS: Mode preset Classic
+PASS: Mode preset Arcade
+PASS: Mode preset Maze
+PASS: Mode preset Speed Run
+PASS: Mode preset Zen
+PASS: Board dimensions Compact 36x28
+PASS: Board dimensions Standard 44x30
+PASS: Board dimensions Wide 56x30
+PASS: Enter starts countdown
+PASS: Active run locks window size
+PASS: Real countdown timer reaches play
+PASS: Live WinForms timer moves snake
+PASS: Maze starts with obstacles and solid walls
+PASS: Arrow/WASD handlers eat food, score and grow snake
+PASS: Space pauses
+PASS: Paused gameplay does not advance
+PASS: Space resume starts countdown
+PASS: Resume countdown completes
+PASS: Collision returns to restart menu
+PASS: Finished run unlocks window size
+PASS: Scoring run appears in local mode leaderboard
+PASS: Enter starts countdown
+PASS: Active run locks window size
+PASS: Real countdown timer reaches play
+PASS: Same challenge seed reproduces food and obstacle layout
+PASS: Menu Right increases speed
+PASS: Menu Left decreases speed
+PASS: Settings, seed, best score and leaderboard reload from disk
+LIMIT: automated keyboard-handler/timer-handler integration, not human play or OS keyboard delivery; audio quality and high-DPI displays not tested.
+CAPTURE: CopyFromScreen of real visible Form1 loaded from the Release SnakeGame.exe; no generated artwork or injected game states.
