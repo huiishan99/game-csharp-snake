@@ -36,6 +36,25 @@ jobs:
       - name: Run engine checks
         run: .\SnakeGame.Tests\bin\Release\SnakeGame.Tests.exe
 
+      - name: Run Windows UI smoke checks and capture real app
+        shell: pwsh
+        run: |
+          $csc = "$env:WINDIR\Microsoft.NET\Framework64\v4.0.30319\csc.exe"
+          & $csc /nologo /target:exe /out:bin\Release\WindowsSmoke.exe /reference:bin\Release\SnakeGame.exe /reference:System.Windows.Forms.dll /reference:System.Drawing.dll /reference:System.Configuration.dll tools\WindowsSmoke.cs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & .\bin\Release\WindowsSmoke.exe artifacts\runtime
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "Source commit: $env:GITHUB_SHA" | Set-Content artifacts\runtime\BUILD_INFO.txt
+          "Run: https://github.com/$env:GITHUB_REPOSITORY/actions/runs/$env:GITHUB_RUN_ID" | Add-Content artifacts\runtime\BUILD_INFO.txt
+
+      - name: Upload runtime screenshots and verification report
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: SnakeGame-Runtime-${{ github.sha }}
+          path: artifacts/runtime
+          if-no-files-found: error
+
       - name: Package app artifact
         shell: pwsh
         run: |
@@ -68,3 +87,4 @@ jobs:
           "- Commit: ``$env:SHORT_SHA``" >> $env:GITHUB_STEP_SUMMARY
           "- Artifact: ``$env:PACKAGE_NAME``" >> $env:GITHUB_STEP_SUMMARY
           "- Includes: executable, config, README, docs, and BUILD_INFO.txt" >> $env:GITHUB_STEP_SUMMARY
+
