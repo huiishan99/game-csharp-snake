@@ -21,6 +21,11 @@ internal static class WindowsSmoke
     static SnakeGameEngine Game { get { return Field<SnakeGameEngine>("game"); } }
     static void Check(bool value, string description) { if (!value) throw new Exception(description); results.Add("PASS: " + description); Console.WriteLine("PASS: " + description); }
     static void Pump(int ms) { var until = DateTime.UtcNow.AddMilliseconds(ms); do { Application.DoEvents(); Thread.Sleep(10); } while (DateTime.UtcNow < until); }
+    static void WaitUntil(Func<bool> condition, string description)
+    {
+        var deadline = DateTime.UtcNow.AddSeconds(15);
+        while (!condition()) { if (DateTime.UtcNow >= deadline) throw new Exception("Timed out: " + description); Pump(10); }
+    }
     static void Key(Keys key) { Call("OnKeyDown", new KeyEventArgs(key)); }
     static void Tick() { Call("timer1_Tick", null, EventArgs.Empty); }
     static void StopClock() { Field<System.Windows.Forms.Timer>("timer1").Stop(); }
@@ -40,7 +45,7 @@ internal static class WindowsSmoke
         Key(Keys.Enter);
         Check(Field<bool>("isCountdownActive"), "Enter starts countdown");
         Check(form.MinimumSize == form.MaximumSize, "Active run locks window size");
-        Pump(2750); StopClock();
+        WaitUntil(() => !Field<bool>("isCountdownActive"), "start countdown"); StopClock();
         Check(!Field<bool>("isCountdownActive") && Game.Status == GameStatus.Playing, "Real countdown timer reaches play");
     }
     static GridCell Next(GridCell p, Direction d)
@@ -97,6 +102,9 @@ internal static class WindowsSmoke
         {
             form = new Form1(); form.Show(); Pump(300);
             Check(form.Visible && Field<Panel>("pnlStartMenu").Visible, "Real WinForms app opens start menu");
+            var startupBoard = GamePresets.GetBoardSize((BoardSizePreset)Field<ComboBox>("cmbBoardSize").SelectedIndex);
+            Check(form.ClientSize.Width == startupBoard.GridWidth * 16 && form.ClientSize.Height == startupBoard.GridHeight * 16 + 44, "Startup applies saved board dimensions");
+            Check(form.ClientRectangle.Contains(Field<Panel>("pnlStartMenu").Bounds), "Startup menu fits inside client area");
             Field<CheckBox>("chkSound").Checked = false;
             Capture("01-menu-classic");
             for (int i = 0; i < 5; i++)
@@ -110,13 +118,13 @@ internal static class WindowsSmoke
             Capture("02-menu-neon-maze");
             Start();
             var layout = Layout();
-            var before = Game.Snake[0]; Field<System.Windows.Forms.Timer>("timer1").Start(); Pump(220); StopClock();
+            var before = Game.Snake[0]; Field<System.Windows.Forms.Timer>("timer1").Start(); WaitUntil(() => !Game.Snake[0].Equals(before), "live movement"); StopClock();
             Check(!Game.Snake[0].Equals(before), "Live WinForms timer moves snake");
             Check(Game.Obstacles.Count > 0 && Game.CurrentBoundaryMode == BoundaryMode.SolidWalls, "Maze starts with obstacles and solid walls");
             EatTo(120); Capture("03-gameplay-neon-maze");
             Key(Keys.Space); Check(Game.Status == GameStatus.Paused, "Space pauses");
             before = Game.Snake[0]; Tick(); Check(Game.Snake[0].Equals(before), "Paused gameplay does not advance"); Capture("04-paused-neon-maze");
-            Key(Keys.Space); Check(Field<bool>("isCountdownActive"), "Space resume starts countdown"); Pump(1400); StopClock(); Check(Game.Status == GameStatus.Playing && !Field<bool>("isCountdownActive"), "Resume countdown completes");
+            Key(Keys.Space); Check(Field<bool>("isCountdownActive"), "Space resume starts countdown"); WaitUntil(() => !Field<bool>("isCountdownActive"), "resume countdown"); StopClock(); Check(Game.Status == GameStatus.Playing && !Field<bool>("isCountdownActive"), "Resume countdown completes");
             // Continue straight until a genuine wall/body/obstacle collision finishes this scoring run.
             for (int i = 0; i < 100 && !Game.IsFinished; i++) Tick();
             Check(Game.Status == GameStatus.GameOver && Field<Panel>("pnlStartMenu").Visible, "Collision returns to restart menu");
