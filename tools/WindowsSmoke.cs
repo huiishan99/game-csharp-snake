@@ -2,6 +2,8 @@
 // Deterministic gameplay invokes the existing key/timer handlers after a live timer check.
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
@@ -12,6 +14,33 @@ using SnakeGame;
 
 internal static class WindowsSmoke
 {
+    [StructLayout(LayoutKind.Sequential)] struct Rect { public int Left, Top, Right, Bottom; }
+    [DllImport("user32.dll")] static extern bool GetClientRect(IntPtr hwnd, out Rect rect);
+    [DllImport("user32.dll")] static extern bool ClientToScreen(IntPtr hwnd, ref Point point);
+    [DllImport("user32.dll")] static extern bool SetForegroundWindow(IntPtr hwnd);
+    static void CheckStandaloneLaunch()
+    {
+        using (var process = Process.Start(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "SnakeGame.exe")))
+        {
+            try
+            {
+                Check(process.WaitForInputIdle(15000), "Standalone executable reaches Windows message loop");
+                WaitUntil(() => { process.Refresh(); return process.MainWindowHandle != IntPtr.Zero; }, "standalone window");
+                var hwnd = process.MainWindowHandle; SetForegroundWindow(hwnd); Pump(200);
+                Rect rect; var origin = Point.Empty;
+                Check(GetClientRect(hwnd, out rect) && ClientToScreen(hwnd, ref origin), "Standalone window geometry is available");
+                Check(rect.Right == 704 && rect.Bottom == 524, "Standalone first launch shows full Standard board");
+                using (var bitmap = new Bitmap(rect.Right, rect.Bottom))
+                using (var graphics = Graphics.FromImage(bitmap))
+                {
+                    graphics.CopyFromScreen(origin, Point.Empty, bitmap.Size);
+                    bitmap.Save(Path.Combine(output, "00-standalone-menu.png"), ImageFormat.Png);
+                }
+                Check(process.CloseMainWindow() && process.WaitForExit(15000), "Standalone executable closes cleanly");
+            }
+            finally { if (!process.HasExited) { process.Kill(); process.WaitForExit(); } }
+        }
+    }
     static Form1 form;
     static string output;
     static readonly List<string> results = new List<string>();
@@ -100,6 +129,7 @@ internal static class WindowsSmoke
         Application.EnableVisualStyles(); Application.SetCompatibleTextRenderingDefault(false);
         try
         {
+            CheckStandaloneLaunch();
             form = new Form1(); form.Show(); Pump(300);
             Check(form.Visible && Field<Panel>("pnlStartMenu").Visible, "Real WinForms app opens start menu");
             var startupBoard = GamePresets.GetBoardSize((BoardSizePreset)Field<ComboBox>("cmbBoardSize").SelectedIndex);
