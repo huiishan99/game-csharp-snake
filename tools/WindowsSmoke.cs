@@ -1,4 +1,4 @@
-// Runs the shipped Form1 from SnakeGame.exe. No test state, score or artwork is injected.
+// Runs the production Form1 from SnakeGame.exe. No test state, score or artwork is injected.
 // Deterministic gameplay invokes the existing key/timer handlers after a live timer check.
 using System;
 using System.Collections.Generic;
@@ -18,6 +18,7 @@ internal static class WindowsSmoke
     [DllImport("user32.dll")] static extern bool GetClientRect(IntPtr hwnd, out Rect rect);
     [DllImport("user32.dll")] static extern bool ClientToScreen(IntPtr hwnd, ref Point point);
     [DllImport("user32.dll")] static extern bool SetForegroundWindow(IntPtr hwnd);
+    [DllImport("user32.dll")] static extern IntPtr GetForegroundWindow();
     static void CheckStandaloneLaunch()
     {
         using (var process = Process.Start(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "SnakeGame.exe")))
@@ -26,7 +27,9 @@ internal static class WindowsSmoke
             {
                 Check(process.WaitForInputIdle(15000), "Standalone executable reaches Windows message loop");
                 WaitUntil(() => { process.Refresh(); return process.MainWindowHandle != IntPtr.Zero; }, "standalone window");
-                var hwnd = process.MainWindowHandle; SetForegroundWindow(hwnd); Pump(200);
+                var hwnd = process.MainWindowHandle; SetForegroundWindow(hwnd);
+                WaitUntil(() => GetForegroundWindow() == hwnd, "standalone foreground window");
+                Pump(1500);
                 Rect rect; var origin = Point.Empty;
                 Check(GetClientRect(hwnd, out rect) && ClientToScreen(hwnd, ref origin), "Standalone window geometry is available");
                 Check(rect.Right == 704 && rect.Bottom == 524, "Standalone first launch shows full Standard board");
@@ -34,9 +37,17 @@ internal static class WindowsSmoke
                 using (var graphics = Graphics.FromImage(bitmap))
                 {
                     graphics.CopyFromScreen(origin, Point.Empty, bitmap.Size);
+                    WaitUntil(() =>
+                    {
+                        graphics.CopyFromScreen(origin, Point.Empty, bitmap.Size);
+                        var colors = new HashSet<int>();
+                        for (int y = 0; y < bitmap.Height; y += 8)
+                            for (int x = 0; x < bitmap.Width; x += 8) colors.Add(bitmap.GetPixel(x, y).ToArgb());
+                        return colors.Count > 50 && GetForegroundWindow() == hwnd;
+                    }, "standalone painted desktop capture");
                     bitmap.Save(Path.Combine(output, "00-standalone-menu.png"), ImageFormat.Png);
                 }
-                Check(process.CloseMainWindow() && process.WaitForExit(15000), "Standalone executable closes cleanly");
+                Check(process.CloseMainWindow() && process.WaitForExit(15000) && process.ExitCode == 0, "Standalone executable closes cleanly");
             }
             finally { if (!process.HasExited) { process.Kill(); process.WaitForExit(); } }
         }
