@@ -57,3 +57,20 @@ The `Windows Build` workflow builds the Release solution, runs `SnakeGame.Tests`
 17. Confirm the start panel covers all controls at the minimum window size and normal Windows scaling.
 18. Confirm the start panel preview snake animates smoothly and the eat feedback is visible without feeling distracting.
 19. Close and reopen the app to confirm speed, mode, board, theme, challenge, leaderboard, sound, and best-score settings are restored.
+
+
+## Automated Windows UI smoke and screenshots
+
+CI also compiles `tools/WindowsSmoke.cs` as a separate verification executable next to the Release app. It first launches `SnakeGame.exe` normally, verifies its window and clean shutdown, and captures its menu. It then loads the production `Form1` from that assembly to check presets, board sizes, live countdown/movement timers, scored gameplay, pause/resume, collisions, seed replay, and disk-backed settings reload. The harness uses its existing key and timer handlers for deterministic gameplay; it does not inject scores, snake positions or artwork.
+
+The `SnakeGame-Runtime-<sha>` artifact contains actual `CopyFromScreen` PNGs, `smoke-results.txt`, and source/run metadata. Review the image pixels as well as the automated result: a successful build alone does not prove that controls fit or that a capture shows the expected window.
+
+To run the same smoke check on an interactive Windows desktop, after building Release:
+
+```powershell
+$csc = "$env:WINDIR\Microsoft.NET\Framework64\v4.0.30319\csc.exe"
+& $csc /nologo /target:exe /out:bin\Release\WindowsSmoke.exe /reference:bin\Release\SnakeGame.exe /reference:System.Windows.Forms.dll /reference:System.Drawing.dll /reference:System.Configuration.dll tools\WindowsSmoke.cs
+.\bin\Release\WindowsSmoke.exe artifacts\runtime
+```
+
+Use a clean Windows test profile: the harness assumes first-launch defaults for the standalone app and writes sample scores/preferences for its integration checks. Do not run it against personal settings you want to retain. It needs a visible unlocked desktop for screenshots. The manual smoke checklist above still covers real keyboard delivery, audio, play feel, window interactions and different Windows scaling configurations.
